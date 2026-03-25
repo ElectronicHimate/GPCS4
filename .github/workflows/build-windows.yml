@@ -82,8 +82,8 @@ jobs:
           /p:Configuration=Release ^
           /t:Rebuild ^
           /p:LatestTargetPlatformVersion=true ^
-          /p:CL_AdditionalIncludeDirectories="${{ env.VULKAN_SDK }}\Include" ^
-          /p:Link_AdditionalLibraryDirectories="${{ env.VULKAN_SDK }}\Lib" ^
+          /p:IncludePath="${{ env.VULKAN_SDK }}\Include;%IncludePath%" ^
+          /p:LibraryPath="${{ env.VULKAN_SDK }}\Lib;%LibraryPath%" ^
           ${{env.SOLUTION_FILE_PATH}}
           
     - name: Setup git hash
