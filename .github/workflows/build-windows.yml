@@ -42,24 +42,13 @@ jobs:
       shell: pwsh
       run: |
         $llvm_path = "C:\Program Files\LLVM"
-        
-        $actual_folder = Get-ChildItem -Path "$llvm_path\lib\clang" | 
-                         Where-Object { $_.PSIsContainer } | 
-                         Select-Object -ExpandProperty Name -First 1
-        
+        $actual_folder = Get-ChildItem -Path "$llvm_path\lib\clang" | Where-Object { $_.PSIsContainer } | Select-Object -ExpandProperty Name -First 1
         $major_ver = $actual_folder.Split('.')[0]
-        Write-Host "Detected LLVM Actual: $actual_folder, Major: $major_ver"
-
         $link_path = "$llvm_path\lib\clang\$major_ver"
         $target_path = "$llvm_path\lib\clang\$actual_folder"
-        
         if ($major_ver -ne $actual_folder) {
-            if (-not (Test-Path $link_path)) {
-                New-Item -ItemType Junction -Path $link_path -Target $target_path
-                Write-Host "Created Junction: $link_path -> $target_path"
-            }
+            if (-not (Test-Path $link_path)) { New-Item -ItemType Junction -Path $link_path -Target $target_path }
         }
-
         $props = @"
         <Project>
           <PropertyGroup>
@@ -69,6 +58,12 @@ jobs:
         </Project>
         "@
         Set-Content -Path .\Directory.build.props -Value $props
+        Add-Content -Path $env:GITHUB_ENV -Value "VULKAN_SDK=${{ steps.vulkan.outputs.VULKAN_SDK }}"
+
+    - name: Locating vulkan.h
+      shell: pwsh
+      run: |
+        Get-ChildItem -Path "D:\", "C:\" -Filter "vulkan.h" -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
 
     - name: Verify Tools
       run: |
@@ -80,20 +75,9 @@ jobs:
       run: |
         set "VULKAN_ROOT=${{ env.VULKAN_SDK }}"
         set "VULKAN_ROOT=%VULKAN_ROOT:/=\%"
-
         set "CL=/I"%VULKAN_ROOT%\Include" %CL%"
         set "LINK=/LIBPATH:"%VULKAN_ROOT%\Lib" %LINK%"
-
-        echo --- COMPILER FORCE FLAGS ---
-        echo CL: %CL%
-        echo LINK: %LINK%
-        echo ----------------------------
-
-        msbuild /m ^
-          /p:Configuration=Release ^
-          /t:Rebuild ^
-          /p:LatestTargetPlatformVersion=true ^
-          ${{env.SOLUTION_FILE_PATH}}
+        msbuild /m /p:Configuration=Release /t:Rebuild /p:LatestTargetPlatformVersion=true ${{env.SOLUTION_FILE_PATH}}
           
     - name: Setup git hash
       run: |
