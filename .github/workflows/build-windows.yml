@@ -23,7 +23,11 @@ jobs:
       uses: humbletim/setup-vulkan-sdk@v1.2.1
       with:
          vulkan-query-version: latest
+         vulkan-components: Vulkan-Headers, Vulkan-Loader, Vulkan-SDK
          vulkan-use-cache: true
+         
+    - name: glslc
+      run: glslc --version
 
     - name: Install LLVM
       run: choco install llvm -y         
