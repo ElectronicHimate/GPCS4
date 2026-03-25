@@ -26,6 +26,20 @@ jobs:
       with:
         version: 1.4.341.1
         cache: true
+
+    - name: Vulkan SDK path
+      run: |
+        $VULKAN_BIN = "${{ env.VULKAN_SDK_PATH }}\Bin"
+        if (Test-Path $VULKAN_BIN) {
+          Add-Content -Path $env:GITHUB_PATH -Value "$VULKAN_BIN"
+          Write-Host "Successfully added $VULKAN_BIN to PATH"
+        } else {
+          Write-Error "Vulkan Bin folder not found at $VULKAN_BIN"
+          exit 1
+        }
+
+    - name: glslc
+      run: glslc --version
         
     - name: Install LLVM
       run: choco install llvm -y         
