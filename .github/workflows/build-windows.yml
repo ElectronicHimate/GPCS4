@@ -103,10 +103,9 @@ jobs:
       # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
       run: |
          $env:ExecutablePath = "${{ env.VULKAN_SDK }}\Bin;" + $env:ExecutablePath
+         msbuild /m /p:Configuration=Debug /t:Rebuild /p:WindowsTargetPlatformVersion=10.0 ${{env.SOLUTION_FILE_PATH}}
+         msbuild /m /p:Configuration=Release /t:Rebuild /p:WindowsTargetPlatformVersion=10.0 ${{env.SOLUTION_FILE_PATH}}
          
-         msbuild /m /p:Configuration=Debug /t:Rebuild ${{env.SOLUTION_FILE_PATH}}
-         msbuild /m /p:Configuration=Release /t:Rebuild ${{env.SOLUTION_FILE_PATH}}
-
     - name: Setup git hash
       run: |
          $git_hash = @(git rev-parse --short HEAD)
