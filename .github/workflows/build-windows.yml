@@ -59,7 +59,7 @@ jobs:
         "@
         Set-Content -Path .\Directory.build.props -Value $props
         
-        $vk_root = "${{ steps.vulkan.outputs.VULKAN_SDK }}".Replace("/", "\")
+        $vk_root = "$env:GITHUB_WORKSPACE\VULKAN_SDK"
         Add-Content -Path $env:GITHUB_ENV -Value "VULKAN_ROOT=$vk_root"
 
     - name: Verify Vulkan Headers
@@ -67,10 +67,12 @@ jobs:
       run: |
         $header = "$env:VULKAN_ROOT\Include\vulkan\vulkan.h"
         Write-Host "Checking path: $header"
-        if (Test-Path $header) { Write-Host "Confirmed: $header exists." }
-        else { 
+        if (Test-Path $header) { 
+            Write-Host "Confirmed: $header exists." 
+        } else { 
+            Write-Host "Vulkan root contents:"
             dir "$env:VULKAN_ROOT"
-            Write-Error "Missing: $header"; exit 1 
+            Write-Error "Missing: $header. The SDK might not be extracted."; exit 1 
         }
 
     - name: Build
