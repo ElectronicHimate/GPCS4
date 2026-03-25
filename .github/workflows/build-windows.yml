@@ -45,10 +45,13 @@ jobs:
 
     - name: Setup Vulkan SDK path
       run: |
-         $vk_sdk="${{env.VULKAN_SDK_PATH}}\${{env.VULKAN_SDK_VERSIOIN}}"
-         $vk_bin="$vk_sdk\Bin"
-         "VULKAN_SDK=$vk_sdk" >> $env:GITHUB_ENV
-         "$vk_bin" >> $env:GITHUB_PATH
+         $vk_sdk = "${{ env.VULKAN_SDK }}\${{ env.VULKAN_SDK_VERSION }}"
+         $vk_bin = "$vk_sdk\Bin"
+         
+         Add-Content -Path $env:GITHUB_ENV -Value "VULKAN_SDK=$vk_sdk"
+         Add-Content -Path $env:GITHUB_PATH -Value "$vk_bin"
+         
+         Write-Host "Vulkan Bin Path: $vk_bin"
 
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1.3.1
