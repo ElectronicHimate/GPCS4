@@ -78,12 +78,12 @@ jobs:
     - name: Build
       shell: cmd
       run: |
+        set "INCLUDE=%VULKAN_SDK%\Include;%INCLUDE%"
+        set "LIB=%VULKAN_SDK%\Lib;%LIB%
         msbuild /m ^
           /p:Configuration=Release ^
           /t:Rebuild ^
           /p:LatestTargetPlatformVersion=true ^
-          /p:ExternalIncludePath="${{ env.VULKAN_SDK }}\Include" ^
-          /p:ExternalLibPath="${{ env.VULKAN_SDK }}\Lib" ^
           ${{env.SOLUTION_FILE_PATH}}
           
     - name: Setup git hash
