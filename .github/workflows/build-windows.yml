@@ -30,6 +30,18 @@ jobs:
         version: ${{ env.VULKAN_SDK_VERSION }}
         cache: true
 
+    - name: Manual SDK Extraction
+      shell: pwsh
+      run: |
+        $exe = "$env:GITHUB_WORKSPACE\vulkan_sdk.exe"
+        $dest = "$env:GITHUB_WORKSPACE\VULKAN_SDK"
+        if (Test-Path $exe) {
+            Write-Host "Extracting Vulkan SDK..."
+            & "7z" x $exe "-o$dest" -y
+        } else {
+            Write-Error "vulkan_sdk.exe not found!"; exit 1
+        }
+
     - name: Install LLVM
       run: choco install llvm -y
 
@@ -58,21 +70,17 @@ jobs:
         </Project>
         "@
         Set-Content -Path .\Directory.build.props -Value $props
-        
-        $vk_root = "$env:GITHUB_WORKSPACE\VULKAN_SDK"
-        Add-Content -Path $env:GITHUB_ENV -Value "VULKAN_ROOT=$vk_root"
+        Add-Content -Path $env:GITHUB_ENV -Value "VULKAN_ROOT=$env:GITHUB_WORKSPACE\VULKAN_SDK"
 
     - name: Verify Vulkan Headers
       shell: pwsh
       run: |
         $header = "$env:VULKAN_ROOT\Include\vulkan\vulkan.h"
-        Write-Host "Checking path: $header"
         if (Test-Path $header) { 
             Write-Host "Confirmed: $header exists." 
         } else { 
-            Write-Host "Vulkan root contents:"
             dir "$env:VULKAN_ROOT"
-            Write-Error "Missing: $header. The SDK might not be extracted."; exit 1 
+            Write-Error "Still missing headers after extraction."; exit 1 
         }
 
     - name: Build
