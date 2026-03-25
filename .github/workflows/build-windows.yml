@@ -58,20 +58,24 @@ jobs:
         </Project>
         "@
         Set-Content -Path .\Directory.build.props -Value $props
-        $vk_path = "${{ steps.vulkan.outputs.VULKAN_SDK }}".Replace("/", "\")
-        Add-Content -Path $env:GITHUB_ENV -Value "VULKAN_SDK=$vk_path"
+        
+        $vk_root = "${{ steps.vulkan.outputs.VULKAN_SDK }}".Replace("/", "\")
+        Add-Content -Path $env:GITHUB_ENV -Value "VULKAN_ROOT=$vk_root"
 
     - name: Verify Vulkan Headers
       shell: pwsh
       run: |
-        $header = "$env:VULKAN_SDK\Include\vulkan\vulkan.h"
+        $header = "$env:VULKAN_ROOT\Include\vulkan\vulkan.h"
+        Write-Host "Checking path: $header"
         if (Test-Path $header) { Write-Host "Confirmed: $header exists." }
-        else { Write-Error "Missing: $header"; exit 1 }
+        else { 
+            dir "$env:VULKAN_ROOT"
+            Write-Error "Missing: $header"; exit 1 
+        }
 
     - name: Build
       shell: cmd
       run: |
-        set "VULKAN_ROOT=%VULKAN_SDK%"
         set "CL=/I"%VULKAN_ROOT%\Include" %CL%"
         set "LINK=/LIBPATH:"%VULKAN_ROOT%\Lib" %LINK%"
         msbuild /m /p:Configuration=Release /t:Rebuild /p:LatestTargetPlatformVersion=true ${{env.SOLUTION_FILE_PATH}}
