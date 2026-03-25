@@ -78,9 +78,14 @@ jobs:
     - name: Build
       shell: cmd
       run: |
-        msbuild /m /p:Configuration=Debug /t:Rebuild /p:LatestTargetPlatformVersion=true ${{env.SOLUTION_FILE_PATH}}
-        msbuild /m /p:Configuration=Release /t:Rebuild /p:LatestTargetPlatformVersion=true ${{env.SOLUTION_FILE_PATH}}
-         
+        msbuild /m ^
+          /p:Configuration=Release ^
+          /t:Rebuild ^
+          /p:LatestTargetPlatformVersion=true ^
+          /p:CL_AdditionalIncludeDirectories="${{ env.VULKAN_SDK }}\Include" ^
+          /p:Link_AdditionalLibraryDirectories="${{ env.VULKAN_SDK }}\Lib" ^
+          ${{env.SOLUTION_FILE_PATH}}
+          
     - name: Setup git hash
       run: |
          for /f "tokens=*" %%i in ('git rev-parse --short HEAD') do set GIT_HASH=%%i
