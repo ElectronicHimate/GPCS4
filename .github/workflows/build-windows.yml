@@ -41,23 +41,33 @@ jobs:
     - name: Configure Paths and LLVM Fix
       shell: pwsh
       run: |
-        $vk_sdk = "${{ steps.vulkan.outputs.VULKAN_SDK }}"
-        Add-Content -Path $env:GITHUB_PATH -Value "$vk_sdk\Bin"
-        Add-Content -Path $env:GITHUB_ENV -Value "VULKAN_SDK=$vk_sdk"
-
         $llvm_path = "C:\Program Files\LLVM"
-        $llvm_ver = (clang --version | Select-String -Pattern "\d+\.\d+\.\d+").Matches.Value
-        $llvm_major = $llvm_ver.Split('.')[0]
         
-        $lib_path = "$llvm_path\lib\clang\$llvm_major"
-        if (Test-Path $lib_path) { 
-            Rename-Item -Path $lib_path -NewName "$llvm_ver" -ErrorAction SilentlyContinue 
+        $actual_folder = Get-ChildItem -Path "$llvm_path\lib\clang" | 
+                         Where-Object { $_.PSIsContainer } | 
+                         Select-Object -ExpandProperty Name -First 1
+        
+        $major_ver = $actual_folder.Split('.')[0]
+        Write-Host "Detected LLVM Actual: $actual_folder, Major: $major_ver"
+
+        $link_path = "$llvm_path\lib\clang\$major_ver"
+        $target_path = "$llvm_path\lib\clang\$actual_folder"
+        
+        if ($major_ver -ne $actual_folder) {
+            if (-not (Test-Path $link_path)) {
+                New-Item -ItemType Junction -Path $link_path -Target $target_path
+                Write-Host "Created Junction: $link_path -> $target_path"
+            }
         }
 
-        Add-Content -Path $env:GITHUB_ENV -Value "LLVM_PATH=$llvm_path"
-        Add-Content -Path $env:GITHUB_ENV -Value "LLVM_VERSION=$llvm_ver"
-        
-        $props = "<Project><PropertyGroup><LLVMInstallDir>$llvm_path</LLVMInstallDir><LLVMToolsVersion>$llvm_ver</LLVMToolsVersion></PropertyGroup></Project>"
+        $props = @"
+        <Project>
+          <PropertyGroup>
+            <LLVMInstallDir>$llvm_path</LLVMInstallDir>
+            <LLVMToolsVersion>$actual_folder</LLVMToolsVersion>
+          </PropertyGroup>
+        </Project>
+        "@
         Set-Content -Path .\Directory.build.props -Value $props
 
     - name: Verify Tools
