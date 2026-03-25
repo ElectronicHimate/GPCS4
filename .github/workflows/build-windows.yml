@@ -9,6 +9,8 @@ on:
 env:
   # Path to the solution file relative to the root of the project.
   SOLUTION_FILE_PATH: .
+  VULKAN_SDK_VERSION: 1.4.341.1
+  LLVM_VERSION: "20.1.8"
 
 permissions:
   contents: read
@@ -25,9 +27,6 @@ jobs:
          vulkan-query-version: latest
          vulkan-components: Vulkan-Headers, Vulkan-Loader, Vulkan-SDK
          vulkan-use-cache: true
-         
-    - name: glslc
-      run: glslc --version
 
     - name: Install LLVM
       run: choco install llvm -y         
@@ -56,7 +55,10 @@ jobs:
          Add-Content -Path $env:GITHUB_PATH -Value "$vk_bin"
          
          Write-Host "Vulkan Bin Path: $vk_bin"
-
+         
+    - name: glslc
+      run: glslc --version
+      
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1.3.1
       with:
