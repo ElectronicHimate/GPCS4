@@ -78,8 +78,17 @@ jobs:
     - name: Build
       shell: cmd
       run: |
-        set "INCLUDE=%VULKAN_SDK%\Include;%INCLUDE%"
-        set "LIB=%VULKAN_SDK%\Lib;%LIB%
+        set "VULKAN_SDK_FIXED=${{ env.VULKAN_SDK }}"
+        set "VULKAN_SDK_FIXED=%VULKAN_SDK_FIXED:/=\%"
+        
+        set "INCLUDE=%VULKAN_SDK_FIXED%\Include;%INCLUDE%"
+        set "LIB=%VULKAN_SDK_FIXED%\Lib;%LIB%"
+        
+        echo --- DEBUG PATHS ---
+        echo VULKAN_SDK: %VULKAN_SDK_FIXED%
+        echo INCLUDE: %INCLUDE%
+        echo -------------------
+
         msbuild /m ^
           /p:Configuration=Release ^
           /t:Rebuild ^
