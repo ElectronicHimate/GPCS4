@@ -8,6 +8,7 @@ on:
 
 env:
   SOLUTION_FILE_PATH: .
+  VULKAN_VERSION: 1.4.341.1
 
 permissions:
   contents: read
@@ -22,8 +23,27 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Install Vulkan SDK
-      run: choco install vulkansdk -y
+    - name: Download and Extract Vulkan SDK
+      shell: pwsh
+      run: |
+        $url = "https://sdk.lunarg.com/sdk/download/${{ env.VULKAN_VERSION }}/windows/VulkanSDK-${{ env.VULKAN_VERSION }}-Installer.exe"
+        $out = "$env:GITHUB_WORKSPACE\vulkansdk_install.exe"
+        $dest = "$env:GITHUB_WORKSPACE\VULKAN_SDK"
+        
+        Write-Host "Downloading Vulkan SDK ${{ env.VULKAN_VERSION }}..."
+        Invoke-WebRequest -Uri $url -OutFile $out
+        
+        Write-Host "Extracting SDK..."
+        & "7z" x $out "-o$dest" -y
+        
+        if (Test-Path "$dest\Include\vulkan\vulkan.h") {
+            Write-Host "Vulkan SDK successfully extracted to $dest"
+            Add-Content -Path $env:GITHUB_ENV -Value "VULKAN_ROOT=$dest"
+        } else {
+            Write-Error "Extraction failed or headers not found in expected location."
+            dir $dest
+            exit 1
+        }
 
     - name: Install LLVM
       run: choco install llvm -y
@@ -53,22 +73,10 @@ jobs:
         </Project>
         "@
         Set-Content -Path .\Directory.build.props -Value $props
-        
-        $vk_path = $env:VULKAN_SDK
-        if (-not $vk_path) { $vk_path = "C:\VulkanSDK\1.4.341.1" }
-        Add-Content -Path $env:GITHUB_ENV -Value "VULKAN_ROOT=$vk_path"
 
-    - name: Verify Vulkan Headers
-      shell: pwsh
+    - name: Verify Tools
       run: |
-        $header = "$env:VULKAN_ROOT\Include\vulkan\vulkan.h"
-        Write-Host "Checking: $header"
-        if (Test-Path $header) { 
-            Write-Host "Confirmed: $header exists." 
-        } else { 
-            Get-ChildItem -Path "C:\" -Filter "VulkanSDK" -Recurse -ErrorAction SilentlyContinue
-            Write-Error "Vulkan headers still not found."; exit 1 
-        }
+        clang-cl --version
 
     - name: Build
       shell: cmd
