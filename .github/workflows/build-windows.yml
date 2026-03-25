@@ -32,11 +32,9 @@ jobs:
         
         Write-Host "Downloading Vulkan SDK ${{ env.VULKAN_VERSION }} from $url..."
         
-        # Using -UseBasicParsing to avoid IE engine dependencies on runners
         Invoke-WebRequest -Uri $url -OutFile $out -UseBasicParsing
         
         Write-Host "Extracting SDK to $dest..."
-        # Extracting specifically the Include and Lib folders to save time/space
         & "7z" x $out "-o$dest" Include Lib Bin -y
         
         if (Test-Path "$dest\Include\vulkan\vulkan.h") {
@@ -80,14 +78,11 @@ jobs:
     - name: Build
       shell: cmd
       run: |
-        :: 1. Add the Vulkan Bin folder to the PATH so the CustomBuild can find glslc
         set "PATH=%VULKAN_ROOT%\Bin;%PATH%"
 
-        :: 2. Force the compiler to see our manual extraction folders
         set "CL=/I"%VULKAN_ROOT%\Include" %CL%"
         set "LINK=/LIBPATH:"%VULKAN_ROOT%\Lib" %LINK%"
         
-        :: 3. Run the build
         msbuild /m /p:Configuration=Release /t:Rebuild /p:LatestTargetPlatformVersion=true ${{env.SOLUTION_FILE_PATH}}
         
     - name: Setup git hash
