@@ -80,12 +80,16 @@ jobs:
     - name: Build
       shell: cmd
       run: |
-        :: Force the compiler to see our manual extraction folders
+        :: 1. Add the Vulkan Bin folder to the PATH so the CustomBuild can find glslc
+        set "PATH=%VULKAN_ROOT%\Bin;%PATH%"
+
+        :: 2. Force the compiler to see our manual extraction folders
         set "CL=/I"%VULKAN_ROOT%\Include" %CL%"
         set "LINK=/LIBPATH:"%VULKAN_ROOT%\Lib" %LINK%"
         
+        :: 3. Run the build
         msbuild /m /p:Configuration=Release /t:Rebuild /p:LatestTargetPlatformVersion=true ${{env.SOLUTION_FILE_PATH}}
-          
+        
     - name: Setup git hash
       run: |
          for /f "tokens=*" %%i in ('git rev-parse --short HEAD') do set GIT_HASH=%%i
