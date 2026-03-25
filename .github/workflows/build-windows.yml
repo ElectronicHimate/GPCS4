@@ -8,7 +8,6 @@ on:
 
 env:
   SOLUTION_FILE_PATH: .
-  VULKAN_SDK_VERSION: 1.4.341.1
 
 permissions:
   contents: read
@@ -24,23 +23,7 @@ jobs:
         submodules: recursive
 
     - name: Install Vulkan SDK
-      uses: humbletim/install-vulkan-sdk@v1.2
-      id: vulkan
-      with:
-        version: ${{ env.VULKAN_SDK_VERSION }}
-        cache: true
-
-    - name: Manual SDK Extraction
-      shell: pwsh
-      run: |
-        $exe = "$env:GITHUB_WORKSPACE\vulkan_sdk.exe"
-        $dest = "$env:GITHUB_WORKSPACE\VULKAN_SDK"
-        if (Test-Path $exe) {
-            Write-Host "Extracting Vulkan SDK..."
-            & "7z" x $exe "-o$dest" -y
-        } else {
-            Write-Error "vulkan_sdk.exe not found!"; exit 1
-        }
+      run: choco install vulkansdk -y
 
     - name: Install LLVM
       run: choco install llvm -y
@@ -70,17 +53,21 @@ jobs:
         </Project>
         "@
         Set-Content -Path .\Directory.build.props -Value $props
-        Add-Content -Path $env:GITHUB_ENV -Value "VULKAN_ROOT=$env:GITHUB_WORKSPACE\VULKAN_SDK"
+        
+        $vk_path = $env:VULKAN_SDK
+        if (-not $vk_path) { $vk_path = "C:\VulkanSDK\1.4.341.1" }
+        Add-Content -Path $env:GITHUB_ENV -Value "VULKAN_ROOT=$vk_path"
 
     - name: Verify Vulkan Headers
       shell: pwsh
       run: |
         $header = "$env:VULKAN_ROOT\Include\vulkan\vulkan.h"
+        Write-Host "Checking: $header"
         if (Test-Path $header) { 
             Write-Host "Confirmed: $header exists." 
         } else { 
-            dir "$env:VULKAN_ROOT"
-            Write-Error "Still missing headers after extraction."; exit 1 
+            Get-ChildItem -Path "C:\" -Filter "VulkanSDK" -Recurse -ErrorAction SilentlyContinue
+            Write-Error "Vulkan headers still not found."; exit 1 
         }
 
     - name: Build
