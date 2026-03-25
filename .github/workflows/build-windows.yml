@@ -10,7 +10,7 @@ env:
   # Path to the solution file relative to the root of the project.
   SOLUTION_FILE_PATH: .
   VULKAN_SDK_PATH: C:\VulkanSDK
-  VULKAN_SDK_VERSIOIN: 1.4.341.1
+  VULKAN_SDK_VERSION: 1.4.341.1
   LLVM_PATH: C:\LLVM
   LLVM_VERSION: 20.1.8
   
