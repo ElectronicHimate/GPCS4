@@ -8,7 +8,7 @@ on:
 
 env:
   SOLUTION_FILE_PATH: .
-  VULKAN_VERSION: 1.4.341.1
+  VULKAN_VERSION: 1.3.296.0
 
 permissions:
   contents: read
@@ -30,18 +30,21 @@ jobs:
         $out = "$env:GITHUB_WORKSPACE\vulkansdk_install.exe"
         $dest = "$env:GITHUB_WORKSPACE\VULKAN_SDK"
         
-        Write-Host "Downloading Vulkan SDK ${{ env.VULKAN_VERSION }}..."
-        Invoke-WebRequest -Uri $url -OutFile $out
+        Write-Host "Downloading Vulkan SDK ${{ env.VULKAN_VERSION }} from $url..."
         
-        Write-Host "Extracting SDK..."
-        & "7z" x $out "-o$dest" -y
+        # Using -UseBasicParsing to avoid IE engine dependencies on runners
+        Invoke-WebRequest -Uri $url -OutFile $out -UseBasicParsing
+        
+        Write-Host "Extracting SDK to $dest..."
+        # Extracting specifically the Include and Lib folders to save time/space
+        & "7z" x $out "-o$dest" Include Lib Bin -y
         
         if (Test-Path "$dest\Include\vulkan\vulkan.h") {
-            Write-Host "Vulkan SDK successfully extracted to $dest"
+            Write-Host "Vulkan SDK successfully extracted."
             Add-Content -Path $env:GITHUB_ENV -Value "VULKAN_ROOT=$dest"
         } else {
-            Write-Error "Extraction failed or headers not found in expected location."
-            dir $dest
+            Write-Error "Extraction failed. Listing root of installer contents:"
+            & "7z" l $out
             exit 1
         }
 
@@ -74,15 +77,13 @@ jobs:
         "@
         Set-Content -Path .\Directory.build.props -Value $props
 
-    - name: Verify Tools
-      run: |
-        clang-cl --version
-
     - name: Build
       shell: cmd
       run: |
+        :: Force the compiler to see our manual extraction folders
         set "CL=/I"%VULKAN_ROOT%\Include" %CL%"
         set "LINK=/LIBPATH:"%VULKAN_ROOT%\Lib" %LINK%"
+        
         msbuild /m /p:Configuration=Release /t:Rebuild /p:LatestTargetPlatformVersion=true ${{env.SOLUTION_FILE_PATH}}
           
     - name: Setup git hash
