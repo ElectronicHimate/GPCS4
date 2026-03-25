@@ -29,12 +29,16 @@ jobs:
 
     - name: Vulkan SDK path
       run: |
-        $VULKAN_BIN = "${{ env.VULKAN_SDK_PATH }}\Bin"
-        if (Test-Path $VULKAN_BIN) {
-          Add-Content -Path $env:GITHUB_PATH -Value "$VULKAN_BIN"
-          Write-Host "Successfully added $VULKAN_BIN to PATH"
+        $glslc = Get-ChildItem -Path "C:\", "D:\" -Filter "glslc.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+        
+        if ($glslc) {
+          $vk_bin = $glslc.DirectoryName
+          Add-Content -Path $env:GITHUB_PATH -Value "$vk_bin"
+          Add-Content -Path $env:GITHUB_ENV -Value "VULKAN_SDK=$($glslc.Directory.Parent.FullName)"
+          Write-Host "Found glslc at: $vk_bin"
+          Write-Host "Added to GITHUB_PATH and VULKAN_SDK set."
         } else {
-          Write-Error "Vulkan Bin folder not found at $VULKAN_BIN"
+          Write-Error "Could not find glslc.exe anywhere on the runner. Ensure the Install step actually succeeded."
           exit 1
         }
 
