@@ -78,16 +78,16 @@ jobs:
     - name: Build
       shell: cmd
       run: |
-        set "VULKAN_SDK_FIXED=${{ env.VULKAN_SDK }}"
-        set "VULKAN_SDK_FIXED=%VULKAN_SDK_FIXED:/=\%"
-        
-        set "INCLUDE=%VULKAN_SDK_FIXED%\Include;%INCLUDE%"
-        set "LIB=%VULKAN_SDK_FIXED%\Lib;%LIB%"
-        
-        echo --- DEBUG PATHS ---
-        echo VULKAN_SDK: %VULKAN_SDK_FIXED%
-        echo INCLUDE: %INCLUDE%
-        echo -------------------
+        set "VULKAN_ROOT=${{ env.VULKAN_SDK }}"
+        set "VULKAN_ROOT=%VULKAN_ROOT:/=\%"
+
+        set "CL=/I"%VULKAN_ROOT%\Include" %CL%"
+        set "LINK=/LIBPATH:"%VULKAN_ROOT%\Lib" %LINK%"
+
+        echo --- COMPILER FORCE FLAGS ---
+        echo CL: %CL%
+        echo LINK: %LINK%
+        echo ----------------------------
 
         msbuild /m ^
           /p:Configuration=Release ^
