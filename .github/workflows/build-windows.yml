@@ -7,11 +7,9 @@ on:
     branches: [ "master" ]
 
 env:
-  # Path to the solution file relative to the root of the project.
   SOLUTION_FILE_PATH: .
-  VULKAN_SDK_PATH: C:\VulkanSDK
   VULKAN_SDK_VERSION: 1.4.341.1
-  
+
 permissions:
   contents: read
 
@@ -20,94 +18,66 @@ jobs:
     runs-on: windows-latest
 
     steps:
-
-    - name: Install Vulkan SDK
-      uses: humbletim/install-vulkan-sdk@v1.2
-      with:
-        version: 1.4.341.1
-        cache: true
-
-    - name: Vulkan SDK path
-      run: |
-        # Define the most likely locations for the Vulkan Bin folder
-        $PossiblePaths = @(
-            "${{ env.VULKAN_SDK }}\Bin",
-            "C:\VulkanSDK\Bin",
-            "D:\a\GPCS4\GPCS4\VULKAN_SDK\Bin",
-            "$env:ProgramFiles\VulkanSDK\1.4.341.1\Bin"
-        )
-
-        $found = $false
-        foreach ($path in $PossiblePaths) {
-            Write-Host "Checking: $path"
-            if (Test-Path "$path\glslc.exe") {
-                Add-Content -Path $env:GITHUB_PATH -Value "$path"
-                $sdk_root = Split-Path -Path $path -Parent
-                Add-Content -Path $env:GITHUB_ENV -Value "VULKAN_SDK=$sdk_root"
-                
-                Write-Host "SUCCESS: Found glslc.exe at $path"
-                $found = $true
-                break
-            }
-        }
-
-        if (-not $found) {
-            Write-Error "Could not find glslc.exe in expected locations. Please check the 'Install Vulkan SDK' step logs for the actual installation path."
-            exit 1
-        }
-
-    - name: glslc
-      run: glslc --version
-        
-    - name: Install LLVM
-      run: choco install llvm -y         
-
     - name: Checkout code
-      id: checkout-code
       uses: actions/checkout@v4
       with:
         submodules: recursive
-        
-    - name: Setup clang-cl
-      working-directory: ${{env.GITHUB_WORKSPACE}}
-      # Fix a LLVM/VS bug which installs/checks wrong path.
-      # Then write a Directory.build.props file to specify clang-cl path.
-      run: |
-         $lib_path="${{env.LLVM_PATH}}\lib\clang\16"
-         if(Test-Path $lib_path) { Rename-Item -Path $lib_path -NewName "${{env.LLVM_VERSION}}" }
-         Set-Content -Path .\Directory.build.props -Value "<Project>`n  <PropertyGroup>`n    <LLVMInstallDir>${{env.LLVM_PATH}}</LLVMInstallDir>`n    <LLVMToolsVersion>${{env.LLVM_VERSION}}</LLVMToolsVersion>`n  </PropertyGroup>`n</Project>"
 
-    - name: Setup Vulkan SDK path
-      run: |
-         $vk_sdk = "${{ env.VULKAN_SDK }}\${{ env.VULKAN_SDK_VERSION }}"
-         $vk_bin = "$vk_sdk\Bin"
-         
-         Add-Content -Path $env:GITHUB_ENV -Value "VULKAN_SDK=$vk_sdk"
-         Add-Content -Path $env:GITHUB_PATH -Value "$vk_bin"
-         
-         Write-Host "Vulkan Bin Path: $vk_bin"
+    - name: Install Vulkan SDK
+      uses: humbletim/install-vulkan-sdk@v1.2
+      id: vulkan
+      with:
+        version: ${{ env.VULKAN_SDK_VERSION }}
+        cache: true
 
-    - name: Setup Windows SDK Path
+    - name: Install LLVM
+      run: choco install llvm -y
+
+    - name: Setup Developer Environment
       uses: ilammy/msvc-dev-cmd@v1
       with:
         arch: x64
-        
-    - name: Build
-      working-directory: ${{env.GITHUB_WORKSPACE}}
-      # Add additional options to the MSBuild command line here (like platform or verbosity level).
-      # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
+
+    - name: Configure Paths and LLVM Fix
+      shell: pwsh
       run: |
-         $env:ExecutablePath = "${{ env.VULKAN_SDK }}\Bin;" + $env:ExecutablePath
-         msbuild /m /p:Configuration=Debug /t:Rebuild /p:WindowsTargetPlatformVersion=true ${{env.SOLUTION_FILE_PATH}}
-         msbuild /m /p:Configuration=Release /t:Rebuild /p:WindowsTargetPlatformVersion=true ${{env.SOLUTION_FILE_PATH}}
+        $vk_sdk = "${{ steps.vulkan.outputs.VULKAN_SDK }}"
+        Add-Content -Path $env:GITHUB_PATH -Value "$vk_sdk\Bin"
+        Add-Content -Path $env:GITHUB_ENV -Value "VULKAN_SDK=$vk_sdk"
+
+        $llvm_path = "C:\Program Files\LLVM"
+        $llvm_ver = (clang --version | Select-String -Pattern "\d+\.\d+\.\d+").Matches.Value
+        $llvm_major = $llvm_ver.Split('.')[0]
+        
+        $lib_path = "$llvm_path\lib\clang\$llvm_major"
+        if (Test-Path $lib_path) { 
+            Rename-Item -Path $lib_path -NewName "$llvm_ver" -ErrorAction SilentlyContinue 
+        }
+
+        Add-Content -Path $env:GITHUB_ENV -Value "LLVM_PATH=$llvm_path"
+        Add-Content -Path $env:GITHUB_ENV -Value "LLVM_VERSION=$llvm_ver"
+        
+        $props = "<Project><PropertyGroup><LLVMInstallDir>$llvm_path</LLVMInstallDir><LLVMToolsVersion>$llvm_ver</LLVMToolsVersion></PropertyGroup></Project>"
+        Set-Content -Path .\Directory.build.props -Value $props
+
+    - name: Verify Tools
+      run: |
+        glslc --version
+        clang-cl --version
+
+    - name: Build
+      shell: cmd
+      run: |
+        msbuild /m /p:Configuration=Debug /t:Rebuild /p:LatestTargetPlatformVersion=true ${{env.SOLUTION_FILE_PATH}}
+        msbuild /m /p:Configuration=Release /t:Rebuild /p:LatestTargetPlatformVersion=true ${{env.SOLUTION_FILE_PATH}}
          
     - name: Setup git hash
       run: |
-         $git_hash = @(git rev-parse --short HEAD)
-         "GIT_HASH_SHORT=$git_hash" >> $env:GITHUB_ENV   
+         for /f "tokens=*" %%i in ('git rev-parse --short HEAD') do set GIT_HASH=%%i
+         echo GIT_HASH_SHORT=%GIT_HASH% >> %GITHUB_ENV%
+      shell: cmd
 
     - name: Upload build files
-      id: upload-artifacts
       uses: actions/upload-artifact@v4
       with:
         name: gpcs4-${{ env.GIT_HASH_SHORT }}
