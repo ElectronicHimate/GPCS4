@@ -1,3 +1,4 @@
+#include <chrono>
 #include "SceEventFlag.h"
 #include "sce_errors.h"
 #include "sce_kernel_eventflag.h"
